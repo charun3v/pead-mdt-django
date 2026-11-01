@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+
+{% block title %}MDT Discussion {{ consensus.mdt_id }} — Paediatric Oncology MDT{% endblock %}
+
+{% block content %}
+<div class="access-window">
+  <!-- Access Form Header -->
+  <div class="access-form-header">
+    <div class="access-form-title">
+      <span>🤝 MDT DISCUSSION & CONSENSUS FORM — {{ consensus.mdt_id }}</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      {% if is_locked %}
+        <span class="status-pill status-approved" style="font-size: 12px; padding: 3px 10px;">🔒 APPROVED & COMPLETED</span>
+      {% else %}
+        <span class="status-pill status-draft" style="font-size: 12px; padding: 3px 10px;">📝 MDT DRAFT</span>
+      {% endif %}
+      <a href="{% url 'clinical_details' clinical_id=clinical.clinical_id %}" class="access-btn access-btn-sm">Clinical Details</a>
+      <a href="{% url 'dashboard' %}" class="access-btn access-btn-sm">Dashboard</a>
+    </div>
+  </div>
+
+  <form method="POST">
+    {% csrf_token %}
+    <div class="access-form-body">
+      {% if is_locked %}
+        <div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 10px 16px; border-radius: 4px; margin-bottom: 14px; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+          <span>🔒 <strong>MDT Finalized & Approved</strong>: Conducted on <strong>{{ consensus.date_mdt_conducted|date:"d-M-Y" }}</strong>. Approved by <strong>{{ consensus.approved_by|default:"Consultant" }}</strong>{% if consensus.approved_on %} on {{ consensus.approved_on|date:"d-M-Y H:i" }}{% endif %}. Both this MDT record and the clinical details are permanently locked.</span>
+          <span class="status-pill status-approved" style="font-size: 11px;">🔒 Locked</span>
+        </div>
+      {% endif %}
+
+      <!-- Section 1: Patient Details (Read Only) -->
+      <div class="access-box" style="background: #f8fafc;">
+        <span class="access-box-title">PATIENT DETAILS</span>
+        <div class="access-row" style="margin-bottom: 0;">
+          <div class="access-col" style="max-width: 180px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 55px;">MR No:</label>
+              <input type="text" class="access-input" value="{{ patient.mr_no }}" readonly style="font-weight: bold; color: #1e3a8a;">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 55px;">Name:</label>
+              <input type="text" class="access-input" value="{{ patient.pt_name }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 140px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Sex:</label>
+              <input type="text" class="access-input" value="{{ patient.sex }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 160px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Age:</label>
+              <input type="text" class="access-input" value="{{ formatted_age }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 190px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 65px;">MDT ID:</label>
+              <input type="text" class="access-input" value="{{ consensus.mdt_id }}" readonly style="font-family: monospace; font-weight: bold; color: #1e40af;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Clinical Summary Baseline (Read Only) -->
+      <div class="access-box">
+        <span class="access-box-title">CLINICAL SUMMARY BASELINE</span>
+        <div class="access-row">
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label">Height (cm):</label>
+              <input type="text" class="access-input" value="{{ clinical.height }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label">Weight (kg):</label>
+              <input type="text" class="access-input" value="{{ clinical.weight }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 50px;">Stage:</label>
+              <input type="text" class="access-input" value="{{ clinical.stage|default:'—' }}" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Presenting Complaints:</label>
+              <textarea class="access-textarea" rows="2" readonly>{{ clinical.presenting_complaints|default:'—' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Examination Findings:</label>
+              <textarea class="access-textarea" rows="2" readonly>{{ clinical.examination_findings|default:'—' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Previous Treatment History:</label>
+              <textarea class="access-textarea" rows="2" readonly>{{ clinical.prev_tx_history|default:'—' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">MDT Discussion For:</label>
+              <textarea class="access-textarea" rows="2" readonly style="background: #fefce8; font-weight: 600;">{{ clinical.mdt_discussion_for }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Chronological Investigations Timeline (qrySubInvestigationsForMDT) -->
+      <div class="access-box">
+        <span class="access-box-title">CHRONOLOGICAL INVESTIGATIONS TIMELINE</span>
+        <div class="access-subform">
+          <table class="access-table">
+            <thead>
+              <tr>
+                <th style="width: 100px;">Date</th>
+                <th style="width: 150px;">Category</th>
+                <th style="width: 180px;">Investigation Type / Modality</th>
+                <th>Details</th>
+                <th>Impression</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inv in all_investigations %}
+                <tr>
+                  <td><strong>{{ inv.date|date:"d-M-Y" }}</strong></td>
+                  <td>{{ inv.category }}</td>
+                  <td><strong>{{ inv.type }}</strong></td>
+                  <td>{{ inv.details|default:"—" }}</td>
+                  <td>{{ inv.impression|default:"—" }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" style="text-align: center; color: #94a3b8; padding: 10px;">
+                    No investigations attached to this episode.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 4: MDT Discussion Entry & Consensus (The Core Entry Form) -->
+      <div class="access-box" style="border: 2px solid {% if is_locked %}#10b981{% else %}#0284c7{% endif %};">
+        <span class="access-box-title" style="color: {% if is_locked %}#059669{% else %}#0284c7{% endif %}; font-size: 12px;">
+          {% if is_locked %}🔒 MDT DISCUSSION & CONSENSUS (APPROVED & LOCKED){% else %}MDT DISCUSSION & CONSENSUS ENTRY{% endif %}
+        </span>
+        
+        <div class="access-row">
+          <div class="access-col" style="flex: 2;">
+            <div class="access-field">
+              <label class="access-label">Final Diagnosis:</label>
+              <input type="text" name="diagnosis" class="access-input" value="{{ clinical.diagnosis }}" {% if is_locked %}readonly style="font-weight: bold; background: #f1f5f9; cursor: not-allowed;"{% else %}style="font-weight: bold; background: #ffffff;"{% endif %}>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">Date Conducted: <span style="color:red;">*</span></label>
+              <input type="date" name="date_mdt_conducted" class="access-input" 
+                     value="{{ consensus.date_mdt_conducted|date:'Y-m-d'|default:clinical.date_mdt_planned|date:'Y-m-d' }}" 
+                     max="{% now 'Y-m-d' %}"
+                     {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: bold;"{% else %}style="font-weight: bold;"{% endif %} required>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">MDT Discussion: <span style="color:red;">*</span></label>
+              <textarea name="mdt_discussion" class="access-textarea" rows="3" required {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ consensus.mdt_discussion|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">MDT Consensus: <span style="color:red;">*</span></label>
+              <textarea name="mdt_consensus" class="access-textarea" rows="3" required {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed; border-color: #cbd5e1;"{% else %}style="border-color: #0284c7;"{% endif %}>{{ consensus.mdt_consensus|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Follow-up Actions:</label>
+              <textarea name="follow_up_actions" class="access-textarea" rows="2" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ consensus.follow_up_actions|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="access-action-bar">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="{% url 'clinical_details' clinical_id=clinical.clinical_id %}" class="access-btn">Back to Clinical Details</a>
+        {% if is_admin %}
+          <button type="submit" form="deleteMDTForm" class="access-btn access-btn-danger" onclick="return confirm('⚠️ ADMIN WARNING: Delete MDT Consensus {{ consensus.mdt_id }}? The clinical episode will be unlocked and returned to Draft.');">
+            🗑️ Delete MDT Consensus
+          </button>
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="{% url 'report_mdt' mdt_id=consensus.mdt_id %}" target="_blank" class="access-btn">
+          🖨️ Print Preview MDT Report
+        </a>
+
+        {% if not is_locked %}
+          <button type="submit" name="action" value="save" class="access-btn access-btn-primary">
+            💾 Save MDT Changes
+          </button>
+
+          <button type="submit" name="action" value="approve" class="access-btn access-btn-success" onclick="return confirm('Finalize and Approve this MDT Discussion? Once approved, both clinical and MDT forms will be permanently locked.');">
+            ✓ Finalize & Approve MDT
+          </button>
+        {% else %}
+          <span class="status-pill status-approved" style="padding: 7px 16px; font-size: 13px; font-weight: bold;">
+            🔒 MDT Finalized & Approved (Locked)
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+
+  {% if is_admin %}
+    <form id="deleteMDTForm" method="POST" action="{% url 'mdt_delete' consensus_id=consensus.consensus_id %}" style="display: none;">
+      {% csrf_token %}
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

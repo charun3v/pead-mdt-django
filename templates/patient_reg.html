@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_edit %}Edit Patient {{ patient.mr_no }}{% else %}Register Patient{% endif %} — Paediatric Oncology MDT{% endblock %}
+
+{% block content %}
+<div class="access-window">
+  <div class="access-form-header">
+    <div class="access-form-title">
+      <span>📋 {% if is_edit %}PATIENT EDIT FORM — {{ patient.mr_no }}{% else %}PATIENT REGISTRATION FORM{% endif %}</span>
+    </div>
+    <div>
+      <a href="{% url 'dashboard' %}" class="access-btn access-btn-sm">Dashboard</a>
+      {% if is_edit %}
+        <a href="{% url 'patient_search_with_mr' mr_no=patient.mr_no %}" class="access-btn access-btn-sm">Patient Cockpit</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="POST" id="regForm">
+    {% csrf_token %}
+    <div class="access-form-body">
+      <!-- Section 1: Demographics -->
+      <div class="access-box">
+        <span class="access-box-title">Patient Identification & Demographics</span>
+        <div class="access-row">
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">MR No: <span style="color:red;">*</span></label>
+              <input type="text" name="mr_no" id="id_mr_no" class="access-input" value="{{ patient.mr_no|default:'' }}" {% if is_edit %}readonly{% else %}required{% endif %}>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Patient Name: <span style="color:red;">*</span></label>
+              <input type="text" name="pt_name" class="access-input" value="{{ patient.pt_name|default:'' }}" required>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 180px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Sex: <span style="color:red;">*</span></label>
+              <select name="sex" class="access-select" required>
+                {% for s in sexes %}
+                  <option value="{{ s.sex }}" {% if patient and patient.sex == s.sex %}selected{% endif %}>{{ s.sex }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">Date of Birth: <span style="color:red;">*</span></label>
+              <input type="date" name="date_of_birth" id="id_dob" class="access-input" value="{{ patient.date_of_birth|date:'Y-m-d'|default:'' }}" required onchange="calculateAge()">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Age:</label>
+              <input type="text" id="id_calculated_age" class="access-input" value="{{ patient.format_age|default:'' }}" readonly style="font-weight: bold; background: #f8fafc;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Clinical Baseline -->
+      <div class="access-box">
+        <span class="access-box-title">Oncology Disease Classification</span>
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Diagnosis: <span style="color:red;">*</span></label>
+              <input type="text" name="diagnosis" class="access-input" value="{{ patient.diagnosis|default:'' }}" required>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Primary Site: <span style="color:red;">*</span></label>
+              <select name="primary_treatment_site" class="access-select" required>
+                <option value="">-- Select Site --</option>
+                {% for st in sites %}
+                  <option value="{{ st.site }}" {% if patient and patient.primary_treatment_site == st.site %}selected{% endif %}>{{ st.site }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 220px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 70px;">Laterality: <span style="color:red;">*</span></label>
+              <select name="laterality" class="access-select" required>
+                <option value="">-- Select --</option>
+                {% for lat in lateralities %}
+                  <option value="{{ lat.laterality }}" {% if patient and patient.laterality == lat.laterality %}selected{% endif %}>{{ lat.laterality }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Contact & Address -->
+      <div class="access-box">
+        <span class="access-box-title">Contact & Geographic Address (Cascading Dropdown)</span>
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Phone: <span style="color:red;">*</span></label>
+              <input type="text" name="phone" class="access-input" value="{{ patient.phone|default:'' }}" required>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Phone [Alt]:</label>
+              <input type="text" name="phone_alternate" class="access-input" value="{{ patient.phone_alternate|default:'' }}">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">Country:</label>
+              <select name="country" id="id_country" class="access-select" onchange="handleCountryChange()">
+                <option value="India" {% if not patient or patient.country == 'India' %}selected{% endif %}>India</option>
+                <option value="Others" {% if patient and patient.country == 'Others' %}selected{% endif %}>Others</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col" style="flex: 2;">
+            <div class="access-field">
+              <label class="access-label">Address:</label>
+              <input type="text" name="address" class="access-input" value="{{ patient.address|default:'' }}">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">State:</label>
+              <select name="state" id="id_state" class="access-select" onchange="loadDistricts()">
+                <option value="">-- Select State --</option>
+                {% for st in states %}
+                  <option value="{{ st.state_name }}" {% if patient and patient.state == st.state_name %}selected{% elif not patient and st.state_name == 'Karnataka' %}selected{% endif %}>{{ st.state_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label">District:</label>
+              <select name="district" id="id_district" class="access-select">
+                <option value="{{ patient.district|default:'' }}">{{ patient.district|default:'-- Select District --' }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">Pincode: <span style="color:red;">*</span></label>
+              <input type="text" name="pincode" class="access-input" value="{{ patient.pincode|default:'' }}" required>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">Digipin:</label>
+              <input type="text" name="digipin" class="access-input" value="{{ patient.digipin|default:'' }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row" style="margin-top: 8px;">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Clinical / Demographic Notes:</label>
+              <textarea name="notes" class="access-textarea" rows="2">{{ patient.notes|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="access-action-bar">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="{% url 'dashboard' %}" class="access-btn">Cancel</a>
+        {% if is_edit and is_admin %}
+          <button type="submit" form="deletePatientForm" class="access-btn access-btn-danger" onclick="return confirm('⚠️ ADMIN WARNING: Permanently delete this patient and all associated clinical episodes & MDTs?');">
+            🗑️ Delete Patient Record
+          </button>
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="access-btn access-btn-success" style="padding: 6px 20px;">
+          💾 Save Patient Record
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if is_edit and is_admin %}
+    <form id="deletePatientForm" method="POST" action="{% url 'patient_delete' mr_no=patient.mr_no %}" style="display: none;">
+      {% csrf_token %}
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function calculateAge() {
+  const dobVal = document.getElementById('id_dob').value;
+  if (!dobVal) return;
+  const dob = new Date(dobVal);
+  const today = new Date();
+  const diffTime = today - dob;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    document.getElementById('id_calculated_age').value = "(future date)";
+    return;
+  }
+  if (diffDays < 30) {
+    document.getElementById('id_calculated_age').value = diffDays + " day" + (diffDays === 1 ? "" : "s");
+    return;
+  }
+  
+  let yrs = today.getFullYear() - dob.getFullYear();
+  let mths = today.getMonth() - dob.getMonth();
+  if (today.getDate() < dob.getDate()) {
+    mths--;
+  }
+  if (mths < 0) {
+    yrs--;
+    mths += 12;
+  }
+  
+  if (yrs === 0) {
+    document.getElementById('id_calculated_age').value = mths + " month" + (mths === 1 ? "" : "s");
+  } else if (yrs < 5) {
+    let s = yrs + " yr" + (yrs === 1 ? "" : "s");
+    if (mths > 0) s += " " + mths + " mo";
+    document.getElementById('id_calculated_age').value = s;
+  } else {
+    document.getElementById('id_calculated_age').value = yrs + " years";
+  }
+}
+
+function handleCountryChange() {
+  const c = document.getElementById('id_country').value;
+  const st = document.getElementById('id_state');
+  const dist = document.getElementById('id_district');
+  if (c === 'Others') {
+    st.disabled = true;
+    dist.disabled = true;
+  } else {
+    st.disabled = false;
+    dist.disabled = false;
+    loadDistricts();
+  }
+}
+
+function loadDistricts() {
+  const state = document.getElementById('id_state').value;
+  const distSelect = document.getElementById('id_district');
+  const currentDist = "{{ patient.district|default:'' }}";
+  
+  if (!state) {
+    distSelect.innerHTML = '<option value="">-- Select District --</option>';
+    return;
+  }
+  
+  fetch('/api/districts/?state=' + encodeURIComponent(state))
+    .then(r => r.json())
+    .then(data => {
+      distSelect.innerHTML = '<option value="">-- Select District --</option>';
+      data.districts.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        if (d === currentDist) opt.selected = true;
+        distSelect.appendChild(opt);
+      });
+    });
+}
+
+// Initial district population
+window.addEventListener('DOMContentLoaded', () => {
+  loadDistricts();
+});
+</script>
+{% endblock %}

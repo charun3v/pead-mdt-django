@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management Console — Paediatric Oncology MDT{% endblock %}
+
+{% block extra_head %}
+<style>
+  .stat-card-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: #ffffff;
+    border: 1px solid var(--access-border);
+    border-radius: 4px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stat-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #1e293b;
+    margin-top: 2px;
+  }
+  .stat-icon {
+    font-size: 24px;
+    opacity: 0.8;
+  }
+
+  /* Role Badges */
+  .role-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .role-admin { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+  .role-consultant { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  .role-resident { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+  .role-user { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+  /* Status Badges */
+  .status-badge-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #16a34a;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .status-badge-inactive {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #dc2626;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dot-green { background: #16a34a; }
+  .dot-red { background: #dc2626; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-window" style="max-width: 1200px; margin: 15px auto;">
+  <!-- Header Bar (frmUserAdmin) -->
+  <div class="access-form-header">
+    <div class="access-form-title">
+      <span>👥 USER MANAGEMENT CONSOLE (frmUserAdmin)</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="{% url 'dashboard' %}" class="access-btn access-btn-sm">⬅ Back to Dashboard</a>
+      <a href="{% url 'logout' %}" class="access-btn access-btn-sm access-btn-danger">Logout</a>
+    </div>
+  </div>
+
+  <div class="access-form-body">
+    <!-- Statistics Row -->
+    <div class="stat-card-row">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Total Users</div>
+          <div class="stat-value">{{ total_count }}</div>
+        </div>
+        <div class="stat-icon">👥</div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Active Users</div>
+          <div class="stat-value" style="color: #16a34a;">{{ active_count }}</div>
+        </div>
+        <div class="stat-icon">✅</div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Administrators</div>
+          <div class="stat-value" style="color: #6d28d9;">{{ admin_count }}</div>
+        </div>
+        <div class="stat-icon">🛡️</div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Clinicians & Staff</div>
+          <div class="stat-value" style="color: #0284c7;">{{ clinician_count }}</div>
+        </div>
+        <div class="stat-icon">🩺</div>
+      </div>
+    </div>
+
+    <!-- Backup & Data Administration Station -->
+    <div class="access-box" style="margin-bottom: 14px; background: #f8fafc; border: 1px solid #cbd5e1;">
+      <span class="access-box-title" style="color: #0369a1;">DATABASE BACKUP & EXTERNAL DATA EXCHANGE</span>
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div style="font-size: 12px; color: #475569;">
+          Export a complete external JSON backup of all registered patients, clinical episodes, MDTs, investigations, and audit logs, or restore data from an existing backup file.
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="{% url 'backup_export' %}" class="access-btn access-btn-primary" style="font-weight: 600;">
+            💾 Download External Backup (JSON)
+          </a>
+          <button type="button" class="access-btn" onclick="openModal('modalImportBackup')" style="font-weight: 600; background: #ffffff;">
+            📥 Import / Restore Backup Data
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Toolbar & Search Bar -->
+    <div class="access-box" style="margin-bottom: 14px; padding: 10px 14px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <button type="button" class="access-btn access-btn-primary" onclick="openModal('modalAddUser')" style="font-weight: 700; padding: 6px 14px;">
+            ➕ Add New User
+          </button>
+        </div>
+
+        <!-- Filter / Search Form -->
+        <form method="GET" action="{% url 'user_admin' %}" style="display: flex; align-items: center; gap: 6px;">
+          <input type="text" name="q" value="{{ search_q }}" class="access-input" placeholder="Search username, name, email..." style="width: 260px; height: 28px;">
+          <button type="submit" class="access-btn" style="height: 28px; padding: 0 12px;">Search</button>
+          {% if search_q %}
+            <a href="{% url 'user_admin' %}" class="access-btn access-btn-sm" style="height: 28px; line-height: 26px;">Clear</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <!-- Subform: Users List (frmSubUsersList) -->
+    <div class="access-box">
+      <span class="access-box-title">SYSTEM USERS & SECURITY ROLES (tblUsers)</span>
+      <div class="access-subform">
+        <table class="access-table">
+          <thead>
+            <tr>
+              <th style="width: 140px;">Username</th>
+              <th style="width: 180px;">Full Name</th>
+              <th style="width: 130px;">User Role</th>
+              <th style="width: 180px;">Email</th>
+              <th style="width: 90px; text-align: center;">Status</th>
+              <th style="width: 140px;">Last Login</th>
+              <th style="text-align: center; width: 260px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td>
+                  <strong style="color: #0f172a;">{{ u.username }}</strong>
+                  {% if u.is_self %}
+                    <span style="font-size: 10px; background: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 3px; font-weight: bold; margin-left: 4px;">You</span>
+                  {% endif %}
+                </td>
+                <td>{{ u.full_name }}</td>
+                <td>
+                  {% if u.role == 'Administrator' %}
+                    <span class="role-pill role-admin">Administrator</span>
+                  {% elif u.role == 'Consultant' %}
+                    <span class="role-pill role-consultant">Consultant</span>
+                  {% elif u.role == 'Resident' %}
+                    <span class="role-pill role-resident">Resident / Fellow</span>
+                  {% else %}
+                    <span class="role-pill role-user">Standard User</span>
+                  {% endif %}
+                </td>
+                <td>{{ u.email|default:"—" }}</td>
+                <td style="text-align: center;">
+                  {% if u.is_active %}
+                    <span class="status-badge-active"><span class="dot dot-green"></span> Active</span>
+                  {% else %}
+                    <span class="status-badge-inactive"><span class="dot dot-red"></span> Disabled</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.last_login %}
+                    {{ u.last_login|date:"d-M-Y H:i" }}
+                  {% else %}
+                    <span style="color: #94a3b8; font-style: italic;">Never</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: center;">
+                  <div style="display: inline-flex; gap: 4px; align-items: center;">
+                    <!-- Edit Details Button -->
+                    <button type="button" class="access-btn access-btn-sm" onclick="openModal('modalEdit_{{ u.id }}')">
+                      ✏️ Edit
+                    </button>
+
+                    <!-- Reset Password Button -->
+                    <button type="button" class="access-btn access-btn-sm" onclick="openModal('modalReset_{{ u.id }}')">
+                      🔑 Reset PW
+                    </button>
+
+                    <!-- Toggle Status Form -->
+                    {% if not u.is_protected %}
+                      <form method="POST" action="{% url 'user_toggle_status' user_id=u.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        {% if u.is_active %}
+                          <button type="submit" class="access-btn access-btn-sm" title="Disable account" onclick="return confirm('Deactivate user {{ u.username }}?');">
+                            🚫 Disable
+                          </button>
+                        {% else %}
+                          <button type="submit" class="access-btn access-btn-sm" title="Enable account">
+                            ✅ Enable
+                          </button>
+                        {% endif %}
+                      </form>
+
+                      <!-- Delete Button -->
+                      <button type="button" class="access-btn access-btn-sm access-btn-danger" onclick="openModal('modalDelete_{{ u.id }}')">
+                        🗑️
+                      </button>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="7" style="text-align: center; color: #64748b; padding: 18px;">
+                  No users found matching query "{{ search_q }}".
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <div class="access-action-bar" style="margin-top: 15px; display: flex; justify-content: space-between;">
+    <a href="{% url 'dashboard' %}" class="access-btn">⬅ Return to Main Dashboard</a>
+    <button type="button" class="access-btn access-btn-primary" onclick="openModal('modalAddUser')">
+      ➕ Create New User Account
+    </button>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL: ADD NEW USER (frmUserEdit - Add) -->
+<!-- ========================================================================= -->
+<div id="modalAddUser" class="access-modal-overlay">
+  <div class="access-modal-content" style="max-width: 500px;">
+    <div class="access-modal-header">
+      <span>➕ Create New User Account (frmUserEdit)</span>
+      <button class="access-modal-close" onclick="closeModal('modalAddUser')">×</button>
+    </div>
+    <form method="POST" action="{% url 'user_create' %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Username: <span style="color:red;">*</span></label>
+          <input type="text" name="username" class="access-input" placeholder="e.g. dr_sharma" required pattern="[A-Za-z0-9_]{3,30}" title="3-30 letters, numbers, or underscores">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">First Name / Title:</label>
+          <input type="text" name="first_name" class="access-input" placeholder="e.g. Dr. Rajesh">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Last Name:</label>
+          <input type="text" name="last_name" class="access-input" placeholder="e.g. Sharma">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Email Address:</label>
+          <input type="email" name="email" class="access-input" placeholder="user@kidwai.org">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Role / User Level: <span style="color:red;">*</span></label>
+          <select name="role" class="access-select" required>
+            <option value="Consultant" selected>Consultant (Clinical & MDT Decision Rights)</option>
+            <option value="Resident">Resident / Fellow (Clinical Data Entry & Drafts)</option>
+            <option value="Administrator">Administrator (Full Access & User Management)</option>
+            <option value="User">Standard User (Read-Only / Lookup)</option>
+          </select>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Initial Password: <span style="color:red;">*</span></label>
+          <input type="password" name="password" class="access-input" placeholder="Minimum 6 characters" minlength="6" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Confirm Password: <span style="color:red;">*</span></label>
+          <input type="password" name="confirm_password" class="access-input" placeholder="Re-type password" minlength="6" required>
+        </div>
+        <div class="access-field">
+          <label class="access-label">Account Active:</label>
+          <input type="checkbox" name="is_active" checked>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalAddUser')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Save User Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODALS FOR EACH USER: EDIT, RESET PASSWORD, DELETE -->
+<!-- ========================================================================= -->
+{% for u in users %}
+  <!-- Modal: Edit User -->
+  <div id="modalEdit_{{ u.id }}" class="access-modal-overlay">
+    <div class="access-modal-content" style="max-width: 500px;">
+      <div class="access-modal-header">
+        <span>✏️ Edit User Details: {{ u.username }}</span>
+        <button class="access-modal-close" onclick="closeModal('modalEdit_{{ u.id }}')">×</button>
+      </div>
+      <form method="POST" action="{% url 'user_edit' user_id=u.id %}">
+        {% csrf_token %}
+        <div class="access-modal-body">
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">Username:</label>
+            <input type="text" class="access-input" value="{{ u.username }}" disabled style="background: #e2e8f0; font-weight: bold;">
+          </div>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">First Name / Title:</label>
+            <input type="text" name="first_name" class="access-input" value="{{ u.first_name }}">
+          </div>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">Last Name:</label>
+            <input type="text" name="last_name" class="access-input" value="{{ u.last_name }}">
+          </div>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">Email Address:</label>
+            <input type="email" name="email" class="access-input" value="{{ u.email }}">
+          </div>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">Role / User Level:</label>
+            <select name="role" class="access-select" required {% if u.is_self and u.role == 'Administrator' %}disabled{% endif %}>
+              <option value="Consultant" {% if u.role == 'Consultant' %}selected{% endif %}>Consultant (Clinical & MDT Decision Rights)</option>
+              <option value="Resident" {% if u.role == 'Resident' %}selected{% endif %}>Resident / Fellow (Clinical Data Entry & Drafts)</option>
+              <option value="Administrator" {% if u.role == 'Administrator' %}selected{% endif %}>Administrator (Full Access & User Management)</option>
+              <option value="User" {% if u.role == 'Standard User' %}selected{% endif %}>Standard User (Read-Only / Lookup)</option>
+            </select>
+          </div>
+          <div class="access-field">
+            <label class="access-label">Account Active:</label>
+            <input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %} {% if u.is_self %}disabled{% endif %}>
+            {% if u.is_self %}
+              <input type="hidden" name="is_active" value="on">
+            {% endif %}
+          </div>
+        </div>
+        <div class="access-modal-footer">
+          <button type="button" class="access-btn" onclick="closeModal('modalEdit_{{ u.id }}')">Cancel</button>
+          <button type="submit" class="access-btn access-btn-primary">Update User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Reset Password (frmUserResetPassword) -->
+  <div id="modalReset_{{ u.id }}" class="access-modal-overlay">
+    <div class="access-modal-content" style="max-width: 460px;">
+      <div class="access-modal-header">
+        <span>🔑 Reset Password: {{ u.username }}</span>
+        <button class="access-modal-close" onclick="closeModal('modalReset_{{ u.id }}')">×</button>
+      </div>
+      <form method="POST" action="{% url 'user_reset_password' user_id=u.id %}">
+        {% csrf_token %}
+        <div class="access-modal-body">
+          <p style="font-size: 12px; color: #475569; margin-bottom: 12px;">
+            Set a new password for user <strong>{{ u.username }}</strong> ({{ u.full_name }}).
+          </p>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">New Password: <span style="color:red;">*</span></label>
+            <input type="password" name="new_password" class="access-input" minlength="6" placeholder="At least 6 characters" required>
+          </div>
+          <div class="access-field" style="margin-bottom: 10px;">
+            <label class="access-label">Confirm New Password: <span style="color:red;">*</span></label>
+            <input type="password" name="confirm_password" class="access-input" minlength="6" placeholder="Repeat new password" required>
+          </div>
+        </div>
+        <div class="access-modal-footer">
+          <button type="button" class="access-btn" onclick="closeModal('modalReset_{{ u.id }}')">Cancel</button>
+          <button type="submit" class="access-btn access-btn-primary">Reset Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Delete User Confirmation -->
+  {% if not u.is_protected %}
+    <div id="modalDelete_{{ u.id }}" class="access-modal-overlay">
+      <div class="access-modal-content" style="max-width: 440px;">
+        <div class="access-modal-header" style="background: #dc2626;">
+          <span>🗑️ Confirm Delete User: {{ u.username }}</span>
+          <button class="access-modal-close" onclick="closeModal('modalDelete_{{ u.id }}')">×</button>
+        </div>
+        <form method="POST" action="{% url 'user_delete' user_id=u.id %}">
+          {% csrf_token %}
+          <div class="access-modal-body">
+            <p style="font-size: 13px; color: #1e293b; margin-bottom: 10px;">
+              Are you sure you want to permanently delete user account <strong>{{ u.username }}</strong> ({{ u.full_name }})?
+            </p>
+            <p style="font-size: 11px; color: #dc2626; font-weight: 600;">
+              ⚠️ This action cannot be undone. All audit log history for this user will be retained.
+            </p>
+          </div>
+          <div class="access-modal-footer">
+            <button type="button" class="access-btn" onclick="closeModal('modalDelete_{{ u.id }}')">Cancel</button>
+            <button type="submit" class="access-btn access-btn-danger">Permanently Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endfor %}
+
+<!-- Modal: Import Database Backup -->
+<div id="modalImportBackup" class="access-modal-overlay">
+  <div class="access-modal-content" style="max-width: 520px;">
+    <div class="access-modal-header" style="background: #0284c7;">
+      <span>📥 Import / Restore Database Backup (JSON)</span>
+      <button class="access-modal-close" onclick="closeModal('modalImportBackup')">×</button>
+    </div>
+    <form method="POST" enctype="multipart/form-data" action="{% url 'backup_import' %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <p style="font-size: 12px; color: #334155; margin-bottom: 12px;">
+          Select a previously exported <strong>PeadMDT_Backup_*.json</strong> file. Existing records will be safely updated and new records inserted within an atomic database transaction.
+        </p>
+        <div class="access-field" style="margin-bottom: 12px;">
+          <label class="access-label">Backup JSON File: <span style="color:red;">*</span></label>
+          <input type="file" name="backup_file" accept=".json" class="access-input" required>
+        </div>
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 8px 12px; border-radius: 4px; font-size: 11px; color: #92400e;">
+          ⚠️ <strong>Note:</strong> Importing large backups may take several seconds. Please do not close your browser while the import is processing.
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalImportBackup')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary" onclick="return confirm('Begin restoring database from selected backup file?');">
+          Begin Import & Restore
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+// Close when clicking modal backdrop
+window.addEventListener('click', function(e) {
+  if (e.target.classList.contains('access-modal-overlay')) {
+    e.target.classList.remove('active');
+  }
+});
+</script>
+{% endblock %}

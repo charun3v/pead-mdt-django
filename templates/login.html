@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Login — Paediatric Oncology MDT{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+  <div class="access-window" style="max-width: 440px; margin: 0;">
+    <div class="access-form-header">
+      <div class="access-form-title">
+        <span>🏥 Paediatric Oncology MDT</span>
+      </div>
+    </div>
+
+    <form method="POST" action="{% url 'login' %}">
+      {% csrf_token %}
+      <div class="access-form-body" style="padding: 24px 20px;">
+        {% if error_msg %}
+          <div style="background: #fee2e2; color: #991b1b; padding: 8px 10px; border-radius: 2px; margin-bottom: 15px; font-weight: 600; font-size: 12px; border: 1px solid #f87171;">
+            {{ error_msg }}
+          </div>
+        {% endif %}
+
+        <div class="access-field vertical" style="margin-bottom: 14px;">
+          <label class="access-label">Username:</label>
+          <input type="text" name="username" class="access-input" required autofocus style="padding: 6px 8px; font-size: 13px;">
+        </div>
+
+        <div class="access-field vertical" style="margin-bottom: 18px;">
+          <label class="access-label">Password:</label>
+          <input type="password" name="password" class="access-input" required style="padding: 6px 8px; font-size: 13px;">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+          <button type="submit" class="access-btn access-btn-primary" style="padding: 6px 20px; font-size: 13px;">
+            Login
+          </button>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 11px; color: #64748b; text-align: center;">
+          Default accounts: <strong>admin</strong> / <strong>admin123</strong> &nbsp;|&nbsp; <strong>dr_oncologist</strong> / <strong>doctor123</strong>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

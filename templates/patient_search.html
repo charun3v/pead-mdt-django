@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Patient Cockpit — Paediatric Oncology MDT{% endblock %}
+
+{% block content %}
+<div class="access-window">
+  <div class="access-form-header">
+    <div class="access-form-title">
+      <span>🔍 PATIENT SEARCH & CLINICAL COCKPIT</span>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <a href="{% url 'dashboard' %}" class="access-btn access-btn-sm">Dashboard</a>
+      <a href="{% url 'patient_reg' %}" class="access-btn access-btn-sm access-btn-primary">+ Register New</a>
+    </div>
+  </div>
+
+  <div class="access-form-body">
+    <!-- Search Bar (frmPatientSearch) -->
+    <div class="access-box" style="background: #f8fafc;">
+      <form method="GET" action="{% url 'patient_search' %}">
+        <div class="access-row" style="margin-bottom: 0;">
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 500px;">
+            <label class="access-label" style="min-width: 110px;">Enter MR No / Name:</label>
+            <input type="text" name="q" class="access-input" value="{{ query }}" autofocus placeholder="Type MR No or Name..." style="padding: 6px 10px; font-size: 13px;">
+            <button type="submit" class="access-btn access-btn-primary" style="padding: 6px 16px;">
+              Search
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    {% if patient %}
+      <!-- Patient Details Header Banner -->
+      <div class="access-box" style="border-left: 4px solid #1e40af;">
+        <span class="access-box-title">PATIENT DETAILS</span>
+        <div class="access-row" style="margin-bottom: 6px;">
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">MR No:</label>
+              <input type="text" class="access-input" value="{{ patient.mr_no }}" readonly style="font-weight: bold; color: #1e3a8a;">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Name:</label>
+              <input type="text" class="access-input" value="{{ patient.pt_name }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 140px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Sex:</label>
+              <input type="text" class="access-input" value="{{ patient.sex }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 160px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Age:</label>
+              <input type="text" class="access-input" value="{{ formatted_age }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row" style="margin-bottom: 6px;">
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Diagnosis:</label>
+              <input type="text" class="access-input" value="{{ patient.diagnosis }}" readonly style="background: #fefce8; font-weight: 600;">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 80px;">Primary Site:</label>
+              <input type="text" class="access-input" value="{{ patient.primary_treatment_site }} ({{ patient.laterality }})" readonly>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Phone:</label>
+              <input type="text" class="access-input" value="{{ patient.phone }}" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; align-items: center;">
+          <a href="{% url 'patient_edit' mr_no=patient.mr_no %}" class="access-btn access-btn-sm">
+            ✏️ Edit Patient Details
+          </a>
+          <a href="{% url 'clinical_new' mr_no=patient.mr_no %}" class="access-btn access-btn-sm access-btn-success" style="font-weight: bold;">
+            ➕ Add Clinical Details / MDT Entry
+          </a>
+          {% if is_admin %}
+            <form method="POST" action="{% url 'patient_delete' mr_no=patient.mr_no %}" style="display: inline;" onsubmit="return confirm('⚠️ ADMIN WARNING: Are you sure you want to permanently delete patient {{ patient.pt_name }} ({{ patient.mr_no }}) and ALL associated clinical episodes and MDT records? This action cannot be undone.');">
+              {% csrf_token %}
+              <button type="submit" class="access-btn access-btn-sm access-btn-danger" style="font-weight: bold;">
+                🗑️ Delete Patient
+              </button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- MDT History Subform (frmSubPtMDTHistory) -->
+      <div class="access-box" style="margin-top: 14px;">
+        <span class="access-box-title">PATIENT MDT PRESENTATION HISTORY</span>
+        <div class="access-subform">
+          <table class="access-table">
+            <thead>
+              <tr>
+                <th style="width: 90px;">Episode #</th>
+                <th style="width: 110px;">Clinical Status</th>
+                <th style="width: 130px;">MDT ID</th>
+                <th style="width: 140px;">MDT Discussion Status</th>
+                <th style="width: 110px;">Planned Date</th>
+                <th>Discussion For / Clinical Impression</th>
+                <th style="width: 200px; text-align: center;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ep in episodes %}
+                <tr class="clickable-row">
+                  <td><strong>#{{ ep.clinical_id }}</strong></td>
+                  <td>
+                    {% if ep.status == 'Approved' %}
+                      <span class="status-pill status-approved">Approved</span>
+                    {% else %}
+                      <span class="status-pill status-draft">Draft</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if ep.mdt_id %}
+                      <span style="font-family: monospace; font-weight: bold; color: #1e40af;">{{ ep.mdt_id }}</span>
+                    {% else %}
+                      <span style="color: #94a3b8; font-style: italic;">Not Generated</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if ep.consensus %}
+                      {% if ep.consensus.status == 'Approved' %}
+                        <span class="status-pill status-approved">Completed</span>
+                      {% else %}
+                        <span class="status-pill status-draft">Pending MDT</span>
+                      {% endif %}
+                    {% else %}
+                      <span style="color: #94a3b8;">—</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ ep.date_mdt_planned|date:"d-M-Y"|default:"—" }}</td>
+                  <td>{{ ep.mdt_discussion_for|truncatewords:12|default:"—" }}</td>
+                  <td style="text-align: center;">
+                    <div style="display: inline-flex; gap: 4px; align-items: center;">
+                      <a href="{% url 'clinical_details' clinical_id=ep.clinical_id %}" class="access-btn access-btn-sm">Clinical</a>
+                      {% if ep.consensus %}
+                        <a href="{% url 'mdt_consensus' consensus_id=ep.consensus.consensus_id %}" class="access-btn access-btn-sm access-btn-primary">MDT</a>
+                        <a href="{% url 'report_mdt' mdt_id=ep.consensus.mdt_id %}" target="_blank" class="access-btn access-btn-sm">Print</a>
+                        {% if is_admin %}
+                          <form method="POST" action="{% url 'mdt_delete' consensus_id=ep.consensus.consensus_id %}" style="display: inline;" onsubmit="return confirm('⚠️ Delete MDT Consensus ({{ ep.consensus.mdt_id }})? This will unlock the clinical episode.');">
+                            {% csrf_token %}
+                            <button type="submit" class="access-btn access-btn-sm" style="color: #b91c1c; border-color: #f87171;" title="Delete MDT Consensus (Unlocks episode)">Del MDT</button>
+                          </form>
+                        {% endif %}
+                      {% endif %}
+                      {% if is_admin %}
+                        <form method="POST" action="{% url 'clinical_delete' clinical_id=ep.clinical_id %}" style="display: inline;" onsubmit="return confirm('⚠️ Delete Clinical Episode #{{ ep.clinical_id }}? All its investigations will be deleted.');">
+                          {% csrf_token %}
+                          <button type="submit" class="access-btn access-btn-sm access-btn-danger" title="Delete Clinical Episode">🗑️</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" style="text-align: center; color: #64748b; padding: 16px;">
+                    No clinical episodes recorded for this patient yet. Click <strong>+ Add Clinical Details</strong> above to create one.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

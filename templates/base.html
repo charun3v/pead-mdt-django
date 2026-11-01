@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Paediatric Oncology MDT{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/access_theme.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  {% if messages %}
+    <div style="max-width: 1240px; margin: 10px auto -5px; padding: 0 10px;">
+      {% for message in messages %}
+        <div style="padding: 8px 12px; margin-bottom: 8px; border-radius: 3px; font-size: 12px; font-weight: 600;
+          {% if message.tags == 'error' %} background: #fee2e2; color: #991b1b; border: 1px solid #f87171;
+          {% else %} background: #dcfce7; color: #166534; border: 1px solid #86efac; {% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

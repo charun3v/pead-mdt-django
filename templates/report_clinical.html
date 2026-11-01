@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Clinical Summary — {{ patient.mr_no }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    body { background: #fff; }
+    .no-print { display: none !important; }
+  }
+  .report-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .report-title {
+    font-size: 15pt;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .report-sub {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #333;
+  }
+  .report-meta-table, .report-inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+  }
+  .report-meta-table td {
+    padding: 3px 6px;
+    font-size: 10pt;
+    vertical-align: top;
+  }
+  .report-inv-table th, .report-inv-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    font-size: 9.5pt;
+  }
+  .report-inv-table th {
+    background-color: #f0f0f0;
+  }
+  .section-heading {
+    font-size: 10.5pt;
+    font-weight: bold;
+    background: #e2e8f0;
+    padding: 3px 6px;
+    border-left: 3px solid #1e3a8a;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-window" style="box-shadow: none; border: none; max-width: 900px; padding: 20px;">
+  <!-- Print Button Bar -->
+  <div class="no-print" style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+    <button onclick="window.print()" class="access-btn access-btn-primary">🖨️ Print Clinical Summary</button>
+    <button onclick="window.close()" class="access-btn">Close Window</button>
+  </div>
+
+  <!-- Header -->
+  <div class="report-header">
+    <div class="report-title">PEADIATRIC ONCOLOGY MULTIDISCIPLINARY TEAM MEETING</div>
+    <div class="report-sub">CLINICAL SUMMARY DOSSIER</div>
+  </div>
+
+  <!-- Patient & Episode Metadata -->
+  <table class="report-meta-table">
+    <tr>
+      <td style="width: 15%;"><strong>MR No:</strong></td>
+      <td style="width: 35%;">{{ patient.mr_no }}</td>
+      <td style="width: 18%;"><strong>MDT ID:</strong></td>
+      <td style="width: 32%;"><strong>{{ clinical.mdt_id|default:"Not yet generated" }}</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Patient Name:</strong></td>
+      <td><strong>{{ patient.pt_name }}</strong></td>
+      <td><strong>Date Planned:</strong></td>
+      <td>{{ clinical.date_mdt_planned|date:"d-M-Y"|default:"—" }}</td>
+    </tr>
+    <tr>
+      <td><strong>Age / Sex:</strong></td>
+      <td>{{ formatted_age }} / {{ patient.sex }}</td>
+      <td><strong>Clinical Status:</strong></td>
+      <td>{{ clinical.status }}</td>
+    </tr>
+    <tr>
+      <td><strong>Diagnosis:</strong></td>
+      <td>{{ clinical.diagnosis|default:patient.diagnosis }}</td>
+      <td><strong>Primary Site:</strong></td>
+      <td>{{ patient.primary_treatment_site }} ({{ patient.laterality }})</td>
+    </tr>
+    <tr>
+      <td><strong>Height / Weight:</strong></td>
+      <td>{{ clinical.height }} cm / {{ clinical.weight }} kg</td>
+      <td><strong>Stage:</strong></td>
+      <td>{{ clinical.stage|default:"—" }}</td>
+    </tr>
+  </table>
+
+  <!-- Clinical Presentation -->
+  <div class="section-heading">Clinical Presentation & Examination</div>
+  <p style="margin-bottom: 6px; font-size: 10pt;"><strong>Presenting Complaints:</strong> {{ clinical.presenting_complaints|default:"None stated" }}</p>
+  <p style="margin-bottom: 6px; font-size: 10pt;"><strong>Examination Findings:</strong> {{ clinical.examination_findings|default:"None stated" }}</p>
+  <p style="margin-bottom: 6px; font-size: 10pt;"><strong>Previous Treatment History:</strong> {{ clinical.prev_tx_history|default:"None" }}</p>
+
+  <!-- Investigations -->
+  <div class="section-heading">Investigation details</div>
+  <table class="report-inv-table">
+    <thead>
+      <tr>
+        <th style="width: 15%;">Date</th>
+        <th style="width: 25%;">Investigation / Modality</th>
+        <th style="width: 30%;">Details</th>
+        <th style="width: 30%;">Impression</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in investigations %}
+        <tr>
+          <td>{{ inv.date|date:"d-M-Y" }}</td>
+          <td><strong>{{ inv.category }}</strong><br><small>{{ inv.type }}</small></td>
+          <td>{{ inv.details|default:"—" }}</td>
+          <td>{{ inv.impression|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" style="text-align: center;">No investigations recorded.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- MDT Discussion Questions (After Investigation details) -->
+  <div class="section-heading">MDT Discussion Required For</div>
+  <p style="font-size: 10pt; background: #fafafa; padding: 6px; border: 1px dashed #ccc; margin-bottom: 12px;">
+    {{ clinical.mdt_discussion_for|default:"To be determined in MDT discussion." }}
+  </p>
+
+  <!-- Signoff Footer -->
+  <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 10pt;">
+    <div>
+      <p>Prepared By: <strong>{{ clinical.entered_by|default:"Clinician" }}</strong></p>
+      <p>Date: {{ clinical.entered_on|date:"d-M-Y H:i" }}</p>
+    </div>
+    {% if clinical.approved_by %}
+      <div style="text-align: right;">
+        <p>Approved By: <strong>{{ clinical.approved_by }}</strong></p>
+        <p>Date: {{ clinical.approved_on|date:"d-M-Y H:i" }}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+
+{% block title %}MDT Report — {{ consensus.mdt_id }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @media print {
+    body { background: #fff; }
+    .no-print { display: none !important; }
+  }
+  .report-header {
+    text-align: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .report-title {
+    font-size: 14pt;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .report-sub {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #333;
+  }
+  .report-meta-table, .report-inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+  }
+  .report-meta-table td {
+    padding: 3px 6px;
+    font-size: 10pt;
+    vertical-align: top;
+  }
+  .report-inv-table th, .report-inv-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    font-size: 9.5pt;
+  }
+  .report-inv-table th {
+    background-color: #f0f0f0;
+  }
+  .section-heading {
+    font-size: 10.5pt;
+    font-weight: bold;
+    background: #e2e8f0;
+    padding: 3px 6px;
+    border-left: 3px solid #1e3a8a;
+    margin-top: 10px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .consensus-box {
+    border: 2px solid #000;
+    background: #fff;
+    padding: 8px 10px;
+    margin-top: 8px;
+    font-size: 10pt;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-window" style="box-shadow: none; border: none; max-width: 900px; padding: 20px;">
+  <!-- Print Button Bar -->
+  <div class="no-print" style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+    <button onclick="window.print()" class="access-btn access-btn-primary">🖨️ Print MDT Report</button>
+    <button onclick="window.close()" class="access-btn">Close Window</button>
+  </div>
+
+  <!-- Institutional Header -->
+  <div class="report-header">
+    <div class="report-title">PEADIATRIC ONCOLOGY MULTIDISCIPLINARY TEAM MEETING REPORT</div>
+    <div class="report-sub">KIDWAI MEMORIAL INSTITUTE OF ONCOLOGY</div>
+  </div>
+
+  <!-- Metadata Table -->
+  <table class="report-meta-table">
+    <tr>
+      <td style="width: 16%;"><strong>MDT ID:</strong></td>
+      <td style="width: 34%;"><strong style="font-family: monospace; font-size: 11pt;">{{ consensus.mdt_id }}</strong></td>
+      <td style="width: 18%;"><strong>Date Conducted:</strong></td>
+      <td style="width: 32%;">{{ consensus.date_mdt_conducted|date:"d-M-Y"|default:clinical.date_mdt_planned|date:"d-M-Y" }}</td>
+    </tr>
+    <tr>
+      <td><strong>MR No:</strong></td>
+      <td><strong>{{ patient.mr_no }}</strong></td>
+      <td><strong>Status:</strong></td>
+      <td><strong>{{ consensus.status }}</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Patient Name:</strong></td>
+      <td><strong>{{ patient.pt_name }}</strong></td>
+      <td><strong>Date Printed:</strong></td>
+      <td>{{ print_date|date:"d-M-Y H:i" }}</td>
+    </tr>
+    <tr>
+      <td><strong>Age / Sex:</strong></td>
+      <td>{{ formatted_age }} / {{ patient.sex }}</td>
+      <td><strong>Primary Site:</strong></td>
+      <td>{{ patient.primary_treatment_site }} ({{ patient.laterality }})</td>
+    </tr>
+    <tr>
+      <td><strong>Diagnosis:</strong></td>
+      <td colspan="3"><strong style="font-size: 10.5pt;">{{ clinical.diagnosis|default:patient.diagnosis }}</strong> {% if clinical.stage %}(Stage: {{ clinical.stage }}){% endif %}</td>
+    </tr>
+  </table>
+
+  <!-- Clinical Summary -->
+  <div class="section-heading">Clinical Baseline & Findings</div>
+  <p style="margin-bottom: 4px; font-size: 10pt;"><strong>Presenting Complaints:</strong> {{ clinical.presenting_complaints|default:"None stated" }}</p>
+  <p style="margin-bottom: 4px; font-size: 10pt;"><strong>Examination Findings:</strong> {{ clinical.examination_findings|default:"None stated" }}</p>
+  <p style="margin-bottom: 4px; font-size: 10pt;"><strong>Previous Treatment History:</strong> {{ clinical.prev_tx_history|default:"None" }}</p>
+  <p style="margin-bottom: 4px; font-size: 10pt;"><strong>MDT Discussion Requested For:</strong> {{ clinical.mdt_discussion_for }}</p>
+
+  <!-- Investigations -->
+  <div class="section-heading">Investigation details</div>
+  <table class="report-inv-table">
+    <thead>
+      <tr>
+        <th style="width: 15%;">Date</th>
+        <th style="width: 25%;">Investigation / Modality</th>
+        <th style="width: 30%;">Details</th>
+        <th style="width: 30%;">Impression</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in investigations %}
+        <tr>
+          <td>{{ inv.date|date:"d-M-Y" }}</td>
+          <td><strong>{{ inv.category }}</strong><br><small>{{ inv.type }}</small></td>
+          <td>{{ inv.details|default:"—" }}</td>
+          <td>{{ inv.impression|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" style="text-align: center;">No investigations recorded.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- MDT Discussion & Consensus Outcome -->
+  <div class="section-heading">MDT Discussion</div>
+  <div style="font-size: 10pt; margin-bottom: 8px;">
+    {{ consensus.mdt_discussion|linebreaks }}
+  </div>
+
+  <div class="section-heading">MDT Consensus</div>
+  <div class="consensus-box">
+    <p style="margin-top: 2px; font-weight: 500;">{{ consensus.mdt_consensus|linebreaks }}</p>
+  </div>
+
+  {% if consensus.follow_up_actions %}
+    <div class="section-heading">Follow-up Actions</div>
+    <div style="font-size: 10pt; margin-bottom: 8px;">
+      {{ consensus.follow_up_actions|linebreaks }}
+    </div>
+  {% endif %}
+
+  <!-- Signatures -->
+  <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 10pt;">
+    <div>
+      <p>MDT Coordinator / Entered By:</p>
+      <p><strong>{{ consensus.entered_by|default:"Clinician" }}</strong></p>
+    </div>
+    <div style="text-align: center;">
+      <p>Department of Paediatric Oncology</p>
+      <p><strong>Kidwai Memorial Institute of Oncology</strong></p>
+    </div>
+    <div style="text-align: right;">
+      <p>Chairperson / Approved By:</p>
+      <p><strong>{{ consensus.approved_by|default:"Consultant Oncologist" }}</strong></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

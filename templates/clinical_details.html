@@ -1,0 +1,708 @@
+{% extends 'base.html' %}
+
+{% block title %}Clinical Details #{{ clinical.clinical_id }} — Paediatric Oncology MDT{% endblock %}
+
+{% block content %}
+<div class="access-window">
+  <!-- Access Form Header -->
+  <div class="access-form-header">
+    <div class="access-form-title">
+      <span>🩺 CLINICAL DETAILS ENTRY — EPISODE #{{ clinical.clinical_id }}</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      {% if clinical.mdt_id %}
+        <span class="status-pill status-approved" style="font-size: 12px; padding: 3px 10px;">MDT ID: {{ clinical.mdt_id }}</span>
+      {% else %}
+        <span class="status-pill status-draft" style="font-size: 12px; padding: 3px 10px;">DRAFT</span>
+      {% endif %}
+      <a href="{% url 'patient_search_with_mr' mr_no=patient.mr_no %}" class="access-btn access-btn-sm">Patient Cockpit</a>
+      <a href="{% url 'dashboard' %}" class="access-btn access-btn-sm">Dashboard</a>
+    </div>
+  </div>
+
+  <form method="POST" id="clinicalForm">
+    {% csrf_token %}
+    <div class="access-form-body">
+      {% if is_locked %}
+        <div style="background: #ecfdf5; border: 1px solid #10b981; color: #065f46; padding: 10px 16px; border-radius: 4px; margin-bottom: 14px; font-weight: 600; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+          <span>🔒 <strong>Clinical Record Locked</strong>: This clinical episode has been Finalized & Approved in MDT (MDT ID: <strong>{{ clinical.mdt_id }}</strong>). Clinical details and investigations are uneditable.</span>
+          {% if clinical.consensus %}
+            <a href="{% url 'mdt_consensus' consensus_id=clinical.consensus.consensus_id %}" class="access-btn access-btn-sm" style="background: #047857; color: white;">View MDT Outcome ➔</a>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <!-- Section 1: Patient Details Header (Banner) -->
+      <div class="access-box" style="background: #f8fafc;">
+        <span class="access-box-title">PATIENT DETAILS</span>
+        <div class="access-row" style="margin-bottom: 0;">
+          <div class="access-col" style="max-width: 180px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 55px;">MR No:</label>
+              <input type="text" class="access-input" value="{{ patient.mr_no }}" readonly style="font-weight: bold; color: #1e3a8a;">
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 55px;">Name:</label>
+              <input type="text" class="access-input" value="{{ patient.pt_name }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 140px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Sex:</label>
+              <input type="text" class="access-input" value="{{ patient.sex }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 150px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">DoB:</label>
+              <input type="text" class="access-input" value="{{ patient.date_of_birth|date:'d-M-Y'|default:'' }}" readonly>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 160px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 40px;">Age:</label>
+              <input type="text" class="access-input" value="{{ formatted_age }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Clinical Details -->
+      <div class="access-box">
+        <span class="access-box-title">CLINICAL PRESENTATION & EXAMINATION</span>
+        <div class="access-row">
+          <div class="access-col" style="max-width: 220px;">
+            <div class="access-field">
+              <label class="access-label">Height (cm):</label>
+              <input type="number" step="0.1" name="height" class="access-input" value="{{ clinical.height|default:'0' }}" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 220px;">
+            <div class="access-field">
+              <label class="access-label">Weight (kg):</label>
+              <input type="number" step="0.1" name="weight" class="access-input" value="{{ clinical.weight|default:'0' }}" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Presenting Complaints:</label>
+              <textarea name="presenting_complaints" class="access-textarea" rows="2" placeholder="Presenting history, onset, symptoms..." {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ clinical.presenting_complaints|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Examination Findings:</label>
+              <textarea name="examination_findings" class="access-textarea" rows="2" placeholder="General, systemic, and local findings..." {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ clinical.examination_findings|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">Previous Treatment History:</label>
+              <textarea name="prev_tx_history" class="access-textarea" rows="2" placeholder="Chemotherapy, radiotherapy, prior surgeries, medications..." {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ clinical.prev_tx_history|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Investigations (4 Subforms with 'Entry added on' column) -->
+      <div class="access-box">
+        <span class="access-box-title">INVESTIGATIONS</span>
+
+        <!-- 3.1 Blood Investigations -->
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #334155; font-size: 12px;">🩸 Blood / Biochemistry / Cytology</span>
+            {% if not is_locked %}
+              <button type="button" class="access-btn access-btn-sm access-btn-primary" onclick="openModal('modalBlood')">+ Add Blood Test</button>
+            {% endif %}
+          </div>
+          <div class="access-subform">
+            <table class="access-table">
+              <thead>
+                <tr>
+                  <th style="width: 100px;">Date</th>
+                  <th style="width: 150px;">Specimen / Test Type</th>
+                  <th>Details</th>
+                  <th>Impression</th>
+                  <th style="width: 60px; text-align: center;">MDT</th>
+                  <th style="width: 60px; text-align: center;">Action</th>
+                  <th style="width: 130px; text-align: center;">Entry added on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in blood_tests %}
+                  <tr>
+                    <td>{{ b.test_date|date:"d-M-Y" }}</td>
+                    <td><strong>{{ b.specimen_type }}</strong></td>
+                    <td>{{ b.details|default:"—" }}</td>
+                    <td>{{ b.impression|default:"—" }}</td>
+                    <td style="text-align: center;">{% if b.linked_to_mdt %}✓{% else %}—{% endif %}</td>
+                    <td style="text-align: center;">
+                      {% if not is_locked %}
+                        <a href="{% url 'delete_investigation' inv_type='blood' inv_id=b.blood_id %}" onclick="return confirm('Delete this blood record?');" style="color: red; text-decoration: none; font-weight: bold;">✕</a>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td style="text-align: center; white-space: nowrap; font-size: 11px; color: #475569;">
+                      {{ b.entered_on|date:"H:i, d-M-y"|default:b.test_date|date:"d-M-y" }}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 6px;">No blood tests recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3.2 Imaging Investigations -->
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #334155; font-size: 12px;">🩻 Imaging / Radiology</span>
+            {% if not is_locked %}
+              <button type="button" class="access-btn access-btn-sm access-btn-primary" onclick="openModal('modalImaging')">+ Add Imaging Details</button>
+            {% endif %}
+          </div>
+          <div class="access-subform">
+            <table class="access-table">
+              <thead>
+                <tr>
+                  <th style="width: 100px;">Date</th>
+                  <th style="width: 110px;">Modality</th>
+                  <th style="width: 120px;">Site</th>
+                  <th>Details</th>
+                  <th>Impression</th>
+                  <th style="width: 60px; text-align: center;">MDT</th>
+                  <th style="width: 60px; text-align: center;">Action</th>
+                  <th style="width: 130px; text-align: center;">Entry added on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for im in imaging_tests %}
+                  <tr>
+                    <td>{{ im.imaging_date|date:"d-M-Y" }}</td>
+                    <td><strong>{{ im.imaging_type }}</strong></td>
+                    <td>{{ im.site|default:"—" }}</td>
+                    <td>{{ im.details|default:"—" }}</td>
+                    <td>{{ im.impression|default:"—" }}</td>
+                    <td style="text-align: center;">{% if im.linked_to_mdt %}✓{% else %}—{% endif %}</td>
+                    <td style="text-align: center;">
+                      {% if not is_locked %}
+                        <a href="{% url 'delete_investigation' inv_type='imaging' inv_id=im.imaging_id %}" onclick="return confirm('Delete this imaging record?');" style="color: red; text-decoration: none; font-weight: bold;">✕</a>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td style="text-align: center; white-space: nowrap; font-size: 11px; color: #475569;">
+                      {{ im.entered_on|date:"H:i, d-M-y"|default:im.imaging_date|date:"d-M-y" }}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 6px;">No imaging tests recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3.3 Pathology Investigations -->
+        <div style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #334155; font-size: 12px;">🔬 Pathology / Histopathology</span>
+            {% if not is_locked %}
+              <button type="button" class="access-btn access-btn-sm access-btn-primary" onclick="openModal('modalPathology')">+ Add Pathology Details</button>
+            {% endif %}
+          </div>
+          <div class="access-subform">
+            <table class="access-table">
+              <thead>
+                <tr>
+                  <th style="width: 100px;">Date</th>
+                  <th style="width: 110px;">Lab Ref #</th>
+                  <th style="width: 130px;">Specimen Type</th>
+                  <th style="width: 120px;">Biopsy Site</th>
+                  <th>Details</th>
+                  <th>Impression</th>
+                  <th style="width: 60px; text-align: center;">MDT</th>
+                  <th style="width: 60px; text-align: center;">Action</th>
+                  <th style="width: 130px; text-align: center;">Entry added on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in pathology_tests %}
+                  <tr>
+                    <td>{{ p.path_date|date:"d-M-Y" }}</td>
+                    <td><strong>{{ p.lab_reference_no }}</strong></td>
+                    <td>{{ p.specimen_type|default:"—" }}</td>
+                    <td>{{ p.site_of_biopsy|default:"—" }}</td>
+                    <td>{{ p.details|default:"—" }}</td>
+                    <td>{{ p.impression|default:"—" }}</td>
+                    <td style="text-align: center;">{% if p.linked_to_mdt %}✓{% else %}—{% endif %}</td>
+                    <td style="text-align: center;">
+                      {% if not is_locked %}
+                        <a href="{% url 'delete_investigation' inv_type='pathology' inv_id=p.path_id %}" onclick="return confirm('Delete this pathology record?');" style="color: red; text-decoration: none; font-weight: bold;">✕</a>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td style="text-align: center; white-space: nowrap; font-size: 11px; color: #475569;">
+                      {{ p.entered_on|date:"H:i, d-M-y"|default:p.path_date|date:"d-M-y" }}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 6px;">No pathology reports recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3.4 Molecular Investigations -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #334155; font-size: 12px;">🧬 Molecular / Cytogenetics</span>
+            {% if not is_locked %}
+              <button type="button" class="access-btn access-btn-sm access-btn-primary" onclick="openModal('modalMolecular')">+ Add Molecular Details</button>
+            {% endif %}
+          </div>
+          <div class="access-subform">
+            <table class="access-table">
+              <thead>
+                <tr>
+                  <th style="width: 100px;">Date</th>
+                  <th style="width: 110px;">Lab Ref #</th>
+                  <th style="width: 130px;">Test Type</th>
+                  <th>Details</th>
+                  <th>Impression</th>
+                  <th style="width: 60px; text-align: center;">MDT</th>
+                  <th style="width: 60px; text-align: center;">Action</th>
+                  <th style="width: 130px; text-align: center;">Entry added on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in molecular_tests %}
+                  <tr>
+                    <td>{{ m.test_date|date:"d-M-Y" }}</td>
+                    <td><strong>{{ m.lab_reference_no }}</strong></td>
+                    <td>{{ m.test_type|default:"—" }}</td>
+                    <td>{{ m.details|default:"—" }}</td>
+                    <td>{{ m.impression|default:"—" }}</td>
+                    <td style="text-align: center;">{% if m.linked_to_mdt %}✓{% else %}—{% endif %}</td>
+                    <td style="text-align: center;">
+                      {% if not is_locked %}
+                        <a href="{% url 'delete_investigation' inv_type='molecular' inv_id=m.molecular_id %}" onclick="return confirm('Delete this molecular record?');" style="color: red; text-decoration: none; font-weight: bold;">✕</a>
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td style="text-align: center; white-space: nowrap; font-size: 11px; color: #475569;">
+                      {{ m.entered_on|date:"H:i, d-M-y"|default:m.test_date|date:"d-M-y" }}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 6px;">No molecular tests recorded.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Current Diagnosis, Stage & MDT Planning -->
+      <div class="access-box">
+        <span class="access-box-title">CURRENT DIAGNOSIS & MDT PLANNING</span>
+        <div class="access-row">
+          <div class="access-col" style="flex: 2;">
+            <div class="access-field">
+              <label class="access-label">Episode Diagnosis:</label>
+              <input type="text" name="diagnosis" class="access-input" value="{{ clinical.diagnosis|default:patient.diagnosis }}" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+            </div>
+          </div>
+          <div class="access-col">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 60px;">Stage:</label>
+              <input type="text" name="stage" class="access-input" value="{{ clinical.stage|default:'' }}" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row">
+          <div class="access-col">
+            <div class="access-field vertical">
+              <label class="access-label">MDT Discussion For:</label>
+              <textarea name="mdt_discussion_for" class="access-textarea" rows="2" placeholder="Specify clinical questions and indications for MDT meeting..." {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>{{ clinical.mdt_discussion_for|default:'' }}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="access-row" style="margin-top: 8px;">
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">Date MDT Planned:</label>
+              <input type="date" name="date_mdt_planned" class="access-input" value="{{ clinical.date_mdt_planned|date:'Y-m-d'|default:'' }}" {% if is_locked %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 250px;">
+            <div class="access-field">
+              <label class="access-label">MDT ID:</label>
+              <input type="text" class="access-input" value="{{ clinical.mdt_id|default:'Not yet generated' }}" readonly style="font-family: monospace; font-weight: bold; color: #1e40af;">
+            </div>
+          </div>
+          <div class="access-col" style="max-width: 200px;">
+            <div class="access-field">
+              <label class="access-label" style="min-width: 50px;">Status:</label>
+              <input type="text" class="access-input" value="{{ clinical.status }}" readonly style="font-weight: bold;">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Private Documents / Photos / Scans / Videos -->
+      <div class="access-box">
+        <span class="access-box-title">ATTACHMENTS (SCANS, PATHOLOGY PHOTOS, CLINICAL VIDEOS, LAB PDFS)</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 11px; color: #64748b;">Centralized private document & media repository for this clinical episode.</span>
+          {% if not is_locked %}
+            <button type="button" class="access-btn access-btn-sm access-btn-primary" onclick="openModal('modalAttachment')">📁 Upload New Attachment</button>
+          {% endif %}
+        </div>
+
+        <div class="access-subform">
+          <table class="access-table">
+            <thead>
+              <tr>
+                <th style="width: 140px;">Category</th>
+                <th>Title / Description</th>
+                <th style="width: 130px;">Uploaded By</th>
+                <th style="width: 120px;">Uploaded At</th>
+                <th style="width: 100px; text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for att in attachments %}
+                <tr>
+                  <td><strong>{{ att.get_category_display }}</strong></td>
+                  <td>{{ att.title }}</td>
+                  <td>{{ att.uploaded_by }}</td>
+                  <td>{{ att.uploaded_at|date:"d-M-Y H:i" }}</td>
+                  <td style="text-align: center;">
+                    <a href="{% url 'download_attachment' attachment_id=att.attachment_id %}" target="_blank" class="access-btn access-btn-sm">View / Download</a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 8px;">No files or media attached to this episode.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="access-action-bar">
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="{% url 'patient_search_with_mr' mr_no=patient.mr_no %}" class="access-btn">Cancel / Back</a>
+        {% if is_admin %}
+          <button type="submit" form="deleteClinicalForm" class="access-btn access-btn-danger" onclick="return confirm('⚠️ ADMIN WARNING: Permanently delete Clinical Episode #{{ clinical.clinical_id }}{% if clinical.mdt_id %} (MDT ID: {{ clinical.mdt_id }}){% endif %} and all its investigations?');">
+            🗑️ Delete Clinical Episode
+          </button>
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="{% url 'report_clinical' clinical_id=clinical.clinical_id %}" target="_blank" class="access-btn">
+          🖨️ Print Preview
+        </a>
+
+        {% if not is_locked %}
+          <button type="submit" name="action" value="save" class="access-btn access-btn-primary">
+            💾 Save as Draft
+          </button>
+
+          <button type="submit" name="action" value="generate_mdt" class="access-btn access-btn-success" onclick="return confirm('Save clinical details and generate/update official MDT ID?');">
+            ⚡ Save and generate MDT ID
+          </button>
+        {% else %}
+          <span class="status-pill status-approved" style="padding: 7px 14px; font-size: 12px; font-weight: bold;">
+            🔒 Clinical Record Locked (MDT Approved)
+          </span>
+        {% endif %}
+
+        <button type="submit" name="action" value="go_to_mdt" class="access-btn" style="background-color: #15803d; color: #ffffff; border-color: #166534; font-weight: bold;">
+          ➡️ Go TO MDT DIscussion
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {% if is_admin %}
+    <form id="deleteClinicalForm" method="POST" action="{% url 'clinical_delete' clinical_id=clinical.clinical_id %}" style="display: none;">
+      {% csrf_token %}
+    </form>
+  {% endif %}
+</div>
+
+<!-- ========================================================================== -->
+<!-- MODAL DIALOGS FOR INVESTIGATIONS & ATTACHMENTS                             -->
+<!-- ========================================================================== -->
+
+<!-- Modal: Blood Test (Default specimen_type: Blood) -->
+<div id="modalBlood" class="access-modal-overlay">
+  <div class="access-modal-content">
+    <div class="access-modal-header">
+      <span>🩸 Add Blood / Biochemistry / Cytology Test</span>
+      <button class="access-modal-close" onclick="closeModal('modalBlood')">×</button>
+    </div>
+    <form method="POST" action="{% url 'add_investigation' inv_type='blood' clinical_id=clinical.clinical_id %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Date of Test:</label>
+          <input type="date" name="test_date" class="access-input" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Specimen Type:</label>
+          <select name="specimen_type" class="access-select" required>
+            <option value="Blood" selected>Blood</option>
+            {% for t in bcm_types %}
+              {% if t.test_type_bcm|lower != "blood" %}
+                <option value="{{ t.test_type_bcm }}">{{ t.test_type_bcm }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Details:</label>
+          <textarea name="details" class="access-textarea" placeholder="Test quantitative values / parameters..."></textarea>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Impression:</label>
+          <textarea name="impression" class="access-textarea" placeholder="Diagnostic impression..."></textarea>
+        </div>
+        <div class="access-field">
+          <label class="access-label">Link to MDT:</label>
+          <input type="checkbox" name="linked_to_mdt" checked>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalBlood')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Save Test</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Imaging -->
+<div id="modalImaging" class="access-modal-overlay">
+  <div class="access-modal-content">
+    <div class="access-modal-header">
+      <span>🩻 Add Imaging / Radiology Details</span>
+      <button class="access-modal-close" onclick="closeModal('modalImaging')">×</button>
+    </div>
+    <form method="POST" action="{% url 'add_investigation' inv_type='imaging' clinical_id=clinical.clinical_id %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Date of Imaging:</label>
+          <input type="date" name="test_date" class="access-input" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Imaging Type:</label>
+          <select name="imaging_type" class="access-select" required>
+            {% for t in imaging_types %}
+              <option value="{{ t.test_type_imaging }}">{{ t.test_type_imaging }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Site:</label>
+          <select name="site" class="access-select">
+            <option value="">-- Select Site --</option>
+            {% for s in imaging_sites %}
+              <option value="{{ s.test_type_imaging }}">{{ s.test_type_imaging }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Details:</label>
+          <textarea name="details" class="access-textarea"></textarea>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Impression: <span style="color:red;">*</span></label>
+          <textarea name="impression" class="access-textarea" required placeholder="Mandatory diagnostic impression..."></textarea>
+        </div>
+        <div class="access-field">
+          <label class="access-label">Link to MDT:</label>
+          <input type="checkbox" name="linked_to_mdt" checked>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalImaging')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Save Imaging</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Pathology -->
+<div id="modalPathology" class="access-modal-overlay">
+  <div class="access-modal-content">
+    <div class="access-modal-header">
+      <span>🔬 Add Pathology Details</span>
+      <button class="access-modal-close" onclick="closeModal('modalPathology')">×</button>
+    </div>
+    <form method="POST" action="{% url 'add_investigation' inv_type='pathology' clinical_id=clinical.clinical_id %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Date of Report:</label>
+          <input type="date" name="test_date" class="access-input" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Lab Reference #:</label>
+          <input type="text" name="lab_reference_no" class="access-input" placeholder="Optional Lab reference number">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Specimen Type:</label>
+          <select name="specimen_type" class="access-select">
+            {% for p in path_types %}
+              <option value="{{ p.test_type_path }}">{{ p.test_type_path }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Site of Biopsy:</label>
+          <input type="text" name="site_of_biopsy" class="access-input">
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Details:</label>
+          <textarea name="details" class="access-textarea"></textarea>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Impression: <span style="color:red;">*</span></label>
+          <textarea name="impression" class="access-textarea" required placeholder="Mandatory diagnostic impression..."></textarea>
+        </div>
+        <div class="access-field">
+          <label class="access-label">Link to MDT:</label>
+          <input type="checkbox" name="linked_to_mdt" checked>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalPathology')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Save Pathology</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Molecular -->
+<div id="modalMolecular" class="access-modal-overlay">
+  <div class="access-modal-content">
+    <div class="access-modal-header">
+      <span>🧬 Add Molecular / Genetic Test Details</span>
+      <button class="access-modal-close" onclick="closeModal('modalMolecular')">×</button>
+    </div>
+    <form method="POST" action="{% url 'add_investigation' inv_type='molecular' clinical_id=clinical.clinical_id %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Date of Test:</label>
+          <input type="date" name="test_date" class="access-input" value="{% now 'Y-m-d' %}" max="{% now 'Y-m-d' %}" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Lab Reference #:</label>
+          <input type="text" name="lab_reference_no" class="access-input" placeholder="Optional Lab reference number">
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Test Type:</label>
+          <select name="test_type" class="access-select">
+            {% for m in molecular_types %}
+              <option value="{{ m.test_type_mol }}">{{ m.test_type_mol }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Details:</label>
+          <textarea name="details" class="access-textarea"></textarea>
+        </div>
+        <div class="access-field vertical" style="margin-bottom: 10px;">
+          <label class="access-label">Impression: <span style="color:red;">*</span></label>
+          <textarea name="impression" class="access-textarea" required placeholder="Mandatory diagnostic impression..."></textarea>
+        </div>
+        <div class="access-field">
+          <label class="access-label">Link to MDT:</label>
+          <input type="checkbox" name="linked_to_mdt" checked>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalMolecular')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Save Molecular</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Attachment Upload -->
+<div id="modalAttachment" class="access-modal-overlay">
+  <div class="access-modal-content">
+    <div class="access-modal-header">
+      <span>📁 Upload Private Document / Photo / Video / Scan</span>
+      <button class="access-modal-close" onclick="closeModal('modalAttachment')">×</button>
+    </div>
+    <form method="POST" enctype="multipart/form-data" action="{% url 'upload_attachment' clinical_id=clinical.clinical_id %}">
+      {% csrf_token %}
+      <div class="access-modal-body">
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">File Category:</label>
+          <select name="category" class="access-select" required>
+            <option value="imaging">Imaging / Radiology Scan</option>
+            <option value="pathology">Pathology Report / Slide Image</option>
+            <option value="clinical_photo">Clinical Photo</option>
+            <option value="clinical_video">Clinical Video / Procedure</option>
+            <option value="document" selected>Document / Discharge Summary / Lab PDF</option>
+            <option value="other">Other Attachment</option>
+          </select>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Title / Description:</label>
+          <input type="text" name="title" class="access-input" placeholder="e.g. Brain MRI T1/T2 axial scans" required>
+        </div>
+        <div class="access-field" style="margin-bottom: 10px;">
+          <label class="access-label">Select File:</label>
+          <input type="file" name="attachment_file" class="access-input" required>
+        </div>
+        <div class="access-field vertical">
+          <label class="access-label">Notes:</label>
+          <textarea name="notes" class="access-textarea" placeholder="Optional notes..."></textarea>
+        </div>
+      </div>
+      <div class="access-modal-footer">
+        <button type="button" class="access-btn" onclick="closeModal('modalAttachment')">Cancel</button>
+        <button type="submit" class="access-btn access-btn-primary">Upload File</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+</script>
+{% endblock %}
